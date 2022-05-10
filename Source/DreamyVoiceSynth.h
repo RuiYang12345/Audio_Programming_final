@@ -1,5 +1,5 @@
 /**
- Synth with filter, adsr and detune param.
+ Synth with  adsr and detune param.
  initalize with addVoice() and addSound(), set up the ADSR pointers
  setCurrentPlaybackSampleRate before use
  */
@@ -203,11 +203,7 @@ private:
     std::atomic<float>* sustainTime;
     std::atomic<float>* releaseTime;
     
-    // Filter
-    std::atomic<float>* lowpassParam; //plugin parameter for lowest frequency
-    std::atomic<float>* highpassParam; //plugin parameter for highest frequency
-    /// frequency modulation of filter
-    Filter filterSynth;
+    
     
 };
 

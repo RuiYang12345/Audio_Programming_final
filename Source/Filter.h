@@ -3,7 +3,7 @@
 #include "Oscillator.h" //for Sinusoidal oscillator
 
 /**
- Stereo filter synth. Call setSampleRate() and setFrequency() before use.
+ lowpass and highpass filter synth. Call setSampleRate() and setFrequency() before use.
  */
 
 class Filter

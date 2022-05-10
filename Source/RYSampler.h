@@ -1,5 +1,5 @@
 /**
- * sampler class binary data
+ * sampler class with binary data
  */
 
 #pragma once
