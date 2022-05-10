@@ -156,6 +156,8 @@ void SamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
             right[i] = right[i] *  (bufferGain);
     }
      
+     
+ 
     // ========================== synth render ===============================
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     int numSamples02 = buffer.getNumSamples();
@@ -182,12 +184,16 @@ void SamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
         float delayMod = delayTimeLFO01.process() + delayTimeLFO02.process();
         int delayTime = delayMod * 4000 + 5000;
         delay.setDelayTime(delayTime);
+        float delayedSample_l = delay.process (leftchannel[y]);
+        float delayedSample_r = delay.process (leftchannel[y]);
+        
          
         //=============== mix =====================
-        leftchannel [y] = leftchannel[y] + delayTime;
-        rightchannel[y] = rightchannel[y] + delayTime;
+        leftchannel [y] = leftchannel[y] + delayedSample_l;
+        rightchannel[y] = rightchannel[y] + delayedSample_r;
      }
-     
+  
+
      
 }
 //================================================================================================
