@@ -60,46 +60,51 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    //instances of classes
+    //Audio classes
+    
+    int voiceCount = 8;
+    
+    /// Sampler
     RYSampler sampler;
-    //juce::Synthesiser sampler;
+    //=======================
     
     /// Delay
     Delay delay;
+    float sr;
     
-    /// Filter
-    Filter filter;
-    
-    /// ADSR
+    /// Synth: TriOsc and ADSR setting
     juce::Synthesiser synth;
         
     /// Delay LFO
     SinOsc delayTimeLFO01;
     TriOsc delayTimeLFO02;
     
-    int voiceCount = 8;
+    //==========================
     
     //AudioParameters
-    
     juce::AudioProcessorValueTreeState parameters;
     
     /// Gain params
     std::atomic<float>* gainParam;  //plugin parameter for gain
     
-    /// Filter params
-    std::atomic<float>* lowpassParam; //plugin parameter for lowest frequency
-    std::atomic<float>* highpassParam; //plugin parameter for highest frequency
+    // Synth Params
     
-    /// ADSR params
+    ///detune Param
+    std::atomic<float>* detuneParam;
+    
+    ///ADSR params
     std::atomic<float>* attackParam; //plugin parameter for envolope
     std::atomic<float>* decayParam;
     std::atomic<float>* sustainParam;
     std::atomic<float>* releaseParam;
     
-    /// Delay lfo params
+    /// Filter params
+    std::atomic<float>* lowpassParam; //plugin parameter for lowest frequency
+    std::atomic<float>* highpassParam; //plugin parameter for highest frequency
+
+    /// Delaylfo params
     std::atomic<float>* lfoRate01Param; //plugin parameter for rate
     std::atomic<float>* lfoRate02Param;
-
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SamplerAudioProcessor)

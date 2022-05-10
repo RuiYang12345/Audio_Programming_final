@@ -1,6 +1,7 @@
 /**
- use ADSR functions for synth.
- initalize with addVoice() and addSound(), set up the ADSR pointers before use
+ Synth with filter and delay setting
+ initalize with addVoice() and addSound(), set up the ADSR pointers
+ setCurrentPlaybackSampleRate before use
  */
 
 #pragma once
@@ -49,6 +50,11 @@ public:
         env.setParameters (envParams);
     }
     
+    void setParameterPointers (std::atomic<float>* detuneIn)
+    {
+        detuneAmount =detuneIn;
+    }
+    
     void setParameterPointers(std::atomic<float>* attackTimeIn, std::atomic<float>* decayTimeIn, std::atomic<float>* sustainTimeIn, std::atomic<float>* releaseTimeIn)
     {
         attackTime = attackTimeIn;
@@ -71,8 +77,7 @@ public:
         ending = false;
         freq = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
         osc.setFrequency (freq);
-        detuneOsc.setFrequency(freq - detuneAmount);
-       
+    
         env.reset();
         env.noteOn();
         
@@ -115,13 +120,18 @@ public:
         if (playing) // check to see if this voice should be playing
         {
              
-            detuneOsc.setFrequency (freq - detuneAmount);//if modulation, put it in DSP loop
+            detuneOsc.setFrequency (freq - *detuneAmount);
             
+            //   ADSR parameter
             envParams.attack = *attackTime;
             envParams.decay = *decayTime;
             envParams.sustain = *sustainTime;
             envParams.release = *releaseTime;
             env.setParameters(envParams);
+            
+            //   filter parameter
+            float freq = *lowpassParam + (*highpassParam - *lowpassParam); //scaling
+            
             
             // DSP iterate through the necessary number of samples (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample;   sampleIndex < (startSample+numSamples);   sampleIndex++)
@@ -129,8 +139,11 @@ public:
                 
                 float envVal = env.getNextSample();
                 
-                //scales sample volume
-                float currentSample = (osc.process() + detuneOsc.process()) * 0.5 * envVal;
+                
+                
+                
+                //======= mix =========
+                float currentSample = (osc.process() + detuneOsc.process()) * 0.5 * envVal * freq;//scales sample volume
                 
                 // your sample-by-sample DSP code here!
                 // An example white noise generater as a placeholder - replace with your own code
@@ -185,17 +198,24 @@ private:
     float freq;
     
     TriOsc osc, detuneOsc;
-    float detuneAmount = 2.0;
-
     
     juce::ADSR env;
-    //ADSR envelope: attack, decay, sustain, release
     
+    
+    // memeber variable to a pointer for params.
+    
+    std::atomic<float>* detuneAmount;
+    // ADSR envelope: attack, decay, sustain, release
     juce::ADSR :: Parameters envParams;
     std::atomic<float>* attackTime;
     std::atomic<float>* decayTime;
     std::atomic<float>* sustainTime;
     std::atomic<float>* releaseTime;
+    
+    // Filter
+    std::atomic<float>* lowpassParam; //plugin parameter for lowest frequency
+    std::atomic<float>* highpassParam; //plugin parameter for highest frequency
+    
 };
 
 //=====================================================================================================

@@ -28,12 +28,6 @@ public:
          addSound( new juce::SamplerSound("Ding", *reader, midiNotes, 60, 0, 0.1, 10.0 ) );
     }
     
-
-   // void setFrequency(float freq)
-   // {
-   //     frequency = freq;
-   // }
-    
 private:
     juce::AudioFormatManager formatManager;
     float frequency;    
