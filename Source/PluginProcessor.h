@@ -7,23 +7,24 @@
 */
 
 #pragma once
-#include "Oscillator.h"
+
 #include <JuceHeader.h>
-#include "FilterSynth.h"
-#include "Modulator.h"
-#include "Vector.h"
-#include "Panning.h"
+#include "RYSampler.h"
+#include "Filter.h"
+#include "DreamyVoiceSynth.h"
 #include "Delay.h"
+#include "Oscillator.h"
+
 
 //==============================================================================
 /**
 */
-class PluginAudioProcessor  : public juce::AudioProcessor
+class SamplerAudioProcessor  : public juce::AudioProcessor
 {
 public:
     //==============================================================================
-    PluginAudioProcessor();
-    ~PluginAudioProcessor() override;
+    SamplerAudioProcessor();
+    ~SamplerAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -59,28 +60,54 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    //Audio classes
     
-    ///instances of classes
+    int voiceCount = 8;
     
-    // === vector of triangle wave ===
-    Vector vector;
-
-    // === frequency modulation of sine tone and square wave ===
-    Modulator modulator01;
-    Modulator modulator02; //second oscillator frequency modulation
+    /// Sampler
+    RYSampler sampler;
+    //=======================
     
-    // === frequency modulation of filter ===
-    FilterSynth filterSynth;
-    
-    // === panning oscillator ===
-    SinOsc02 panOsc;
-    
-    //=== delay ===
+    /// Delay
     Delay delay;
+    float sr;
     
+    /// Synth: TriOsc and ADSR setting
+    juce::Synthesiser synth;
+        
+    /// Delay LFO
+    SinOsc delayTimeLFO01;
+    TriOsc delayTimeLFO02;
+    
+    /// frequency modulation of filter 
+    Filter filterSynth;
 
+    //==========================
+    
+    //AudioParameters
+    juce::AudioProcessorValueTreeState parameters;
+    
+    /// Gain params
+    std::atomic<float>* gainParam;  //plugin parameter for gain
+    
+    // Synth Params
+    
+    ///detune Param
+    std::atomic<float>* detuneParam;
+    
+    ///ADSR params
+    std::atomic<float>* attackParam; //plugin parameter for envolope
+    std::atomic<float>* decayParam;
+    std::atomic<float>* sustainParam;
+    std::atomic<float>* releaseParam;
+    
+    /// Filter params
+    std::atomic<float>* LowpassOrHighpassParam; //plugin parameter for lowest frequency
 
+    /// Delaylfo params
+    std::atomic<float>* lfoRate01Param; //plugin parameter for rate
+    std::atomic<float>* lfoRate02Param;
+    
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginAudioProcessor)
-
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SamplerAudioProcessor)
 };

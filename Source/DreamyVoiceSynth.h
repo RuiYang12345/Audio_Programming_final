@@ -1,5 +1,5 @@
 /**
- Synth with filter and delay setting
+ Synth with filter, adsr and detune param.
  initalize with addVoice() and addSound(), set up the ADSR pointers
  setCurrentPlaybackSampleRate before use
  */
@@ -50,13 +50,10 @@ public:
         env.setParameters (envParams);
     }
     
-    void setParameterPointers (std::atomic<float>* detuneIn)
+ 
+    void setParameterPointers(std::atomic<float>* detuneIn, std::atomic<float>* attackTimeIn, std::atomic<float>* decayTimeIn, std::atomic<float>* sustainTimeIn, std::atomic<float>* releaseTimeIn)
     {
         detuneAmount =detuneIn;
-    }
-    
-    void setParameterPointers(std::atomic<float>* attackTimeIn, std::atomic<float>* decayTimeIn, std::atomic<float>* sustainTimeIn, std::atomic<float>* releaseTimeIn)
-    {
         attackTime = attackTimeIn;
         decayTime = decayTimeIn;
         sustainTime = sustainTimeIn;
@@ -129,10 +126,6 @@ public:
             envParams.release = *releaseTime;
             env.setParameters(envParams);
             
-            //   filter parameter
-            float freq = *lowpassParam + (*highpassParam - *lowpassParam); //scaling
-            
-            
             // DSP iterate through the necessary number of samples (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample;   sampleIndex < (startSample+numSamples);   sampleIndex++)
             {
@@ -140,10 +133,8 @@ public:
                 float envVal = env.getNextSample();
                 
                 
-                
-                
                 //======= mix =========
-                float currentSample = (osc.process() + detuneOsc.process()) * 0.5 * envVal * freq;//scales sample volume
+                float currentSample = (osc.process() + detuneOsc.process()) * 0.5 * envVal;//scales sample volume
                 
                 // your sample-by-sample DSP code here!
                 // An example white noise generater as a placeholder - replace with your own code
@@ -215,6 +206,8 @@ private:
     // Filter
     std::atomic<float>* lowpassParam; //plugin parameter for lowest frequency
     std::atomic<float>* highpassParam; //plugin parameter for highest frequency
+    /// frequency modulation of filter
+    Filter filterSynth;
     
 };
 
