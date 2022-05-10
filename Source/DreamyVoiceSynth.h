@@ -1,15 +1,11 @@
-/*
-  ==============================================================================
-
-    DreamyVoiceSynthesiser.h
-    Created: 13 April 2022
-    Author:  Rui
-
-  ==============================================================================
-*/
+/**
+ use ADSR functions for synth.
+ initalize with addVoice() and addSound(), set up the ADSR pointers before use
+ */
 
 #pragma once
-#include "RYSampler.h"
+#include "Oscillator.h"
+
 // ===========================
 // ===========================
 // SOUND
@@ -29,8 +25,6 @@ public:
 /*!
  @class DreamyVoiceSynthVoice
  @abstract struct defining the DSP associated with a specific voice.
- @discussion multiple DreamyVoiceSynthVoice objects will be created by the Synthesiser so that it can be played polyphicially
- 
  @namespace none
  @updated 2019-06-18
  */
@@ -42,10 +36,9 @@ public:
     
     void init (float sampleRate)
     {
-       // rySampler.setSampleRate(sampleRate);
-      
+        osc.setSampleRate(sampleRate);
+        detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
-        
         
         juce::ADSR::Parameters envParams;
         envParams.attack = 0.5;
@@ -55,8 +48,6 @@ public:
     
         env.setParameters (envParams);
     }
-    
-    
     
     void setParameterPointers(std::atomic<float>* attackTimeIn, std::atomic<float>* decayTimeIn, std::atomic<float>* sustainTimeIn, std::atomic<float>* releaseTimeIn)
     {
@@ -79,9 +70,9 @@ public:
         playing = true;
         ending = false;
         freq = juce::MidiMessage::getMidiNoteInHertz (midiNoteNumber);
-        rySampler.setFrequency (freq);
-
-        	
+        osc.setFrequency (freq);
+        detuneOsc.setFrequency(freq - detuneAmount);
+       
         env.reset();
         env.noteOn();
         
@@ -108,8 +99,6 @@ public:
             playing = false;
         }
     }
-            
-        
     
     //--------------------------------------------------------------------------
     /**
@@ -125,15 +114,14 @@ public:
     {
         if (playing) // check to see if this voice should be playing
         {
-            
+             
+            detuneOsc.setFrequency (freq - detuneAmount);//if modulation, put it in DSP loop
             
             envParams.attack = *attackTime;
             envParams.decay = *decayTime;
             envParams.sustain = *sustainTime;
             envParams.release = *releaseTime;
             env.setParameters(envParams);
-            
-            
             
             // DSP iterate through the necessary number of samples (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample;   sampleIndex < (startSample+numSamples);   sampleIndex++)
@@ -142,7 +130,7 @@ public:
                 float envVal = env.getNextSample();
                 
                 //scales sample volume
-                float currentSample = 1.0 * envVal;
+                float currentSample = (osc.process() + detuneOsc.process()) * 0.5 * envVal;
                 
                 // your sample-by-sample DSP code here!
                 // An example white noise generater as a placeholder - replace with your own code
@@ -167,7 +155,7 @@ public:
         }
     }
     //--------------------------------------------------------------------------
-    ///pitch bend!
+    ///pitch bend
     void pitchWheelMoved(int) override {}
 
     //--------------------------------------------------------------------------
@@ -187,7 +175,7 @@ public:
 private:
     //--------------------------------------------------------------------------
     // Set up any necessary variables here
-    /// Should the voice be playing?
+    /// set up voice play
     bool playing = false;
     bool ending = false;
     
@@ -195,12 +183,13 @@ private:
     juce::Random random;
     
     float freq;
+    
+    TriOsc osc, detuneOsc;
+    float detuneAmount = 2.0;
 
-    RYSampler rySampler;
     
     juce::ADSR env;
     //ADSR envelope: attack, decay, sustain, release
-    
     
     juce::ADSR :: Parameters envParams;
     std::atomic<float>* attackTime;

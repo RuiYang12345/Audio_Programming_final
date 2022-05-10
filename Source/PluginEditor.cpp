@@ -13,9 +13,6 @@
 SamplerAudioProcessorEditor::SamplerAudioProcessorEditor (SamplerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-///
-   //attackSlider.setSliderStyle(juce::Slider :: SliderStyle :: RotaryVerticalDrag);
-    
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.

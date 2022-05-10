@@ -35,54 +35,65 @@ SamplerAudioProcessor::SamplerAudioProcessor()
     std::make_unique<juce::AudioParameterFloat> ("SUSTAIN", "Sustain", 0.0, 1.0, 1.0),
     std::make_unique<juce::AudioParameterFloat> ("RELEASE", "Release", 0.0, 5.0, 2.0),
 
-    std::make_unique<juce::AudioParameterFloat>("lfoRate01", "SinLFO Rate", 0.0, 1000.0, 0.25),
-    std::make_unique<juce::AudioParameterFloat>("lfoRate02", "TriLFO Rate", 0.0, 20.0, 0.25),
+    std::make_unique<juce::AudioParameterFloat>("lfoRate01", "SinLFO Rate", 0.0, 1.0, 0.0025),
+    std::make_unique<juce::AudioParameterFloat>("lfoRate02", "TriLFO Rate", 0.0, 2.0, 0.0025),
         
-    std::make_unique<juce::AudioParameterBool>("bypass", "Bypass",false),
-    
-    
+
 } )
 
 {
+    //for whole
     gainParam = parameters.getRawParameterValue("gain");
     
+    //for sampler
     lowpassParam = parameters.getRawParameterValue("lowpass");
     highpassParam = parameters.getRawParameterValue("highpass");
     
+    //for synth
     attackParam = parameters.getRawParameterValue("attack");
     decayParam = parameters.getRawParameterValue("decay");
     sustainParam = parameters.getRawParameterValue("sustain");
     releaseParam = parameters.getRawParameterValue("release");
     
+    //for synth
     lfoRate01Param = parameters.getRawParameterValue("lfoRate01");
     lfoRate02Param = parameters.getRawParameterValue("lfoRate02");
     
-    bypassParam = parameters.getRawParameterValue("bypass");
-       
-    
-    //===========================================================
-
-    //voice count
-    for (int i=0; i<voiceCount; i++)
+    //========================== constructor =================================
+    // initialize sampler
+    for (int i = 0; i < voiceCount; i++) //voice count
     {
-        sampler.addVoice( new juce::SamplerVoice() );
+       sampler.addVoice(new juce::SamplerVoice());
     }
-    
-    // audio setting
+
     sampler.setSample(BinaryData::RY_Metal_Knock_C4_wav, BinaryData::RY_Metal_Knock_C4_wavSize);
     
+
+    // initalize synth
+    //voice count
+        for (int i=0; i<voiceCount; i++)
+        {
+            synth.addVoice( new DreamyVoiceSynthVoice() );
+        }
+
+        synth.addSound( new DreamyVoiceSynthSound);
+        
+
+    // set parameters for sampler
+    for (int i = 0; i < voiceCount; i++)
+    {
+        DreamyVoiceSynthVoice* v = dynamic_cast< DreamyVoiceSynthVoice*>(synth.getVoice(i));
+        v->setParameterPointers(attackParam, decayParam, sustainParam, releaseParam);
+    }
+    
 }
+
 //==============================================================================
 
 void SamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     sampler.setCurrentPlaybackSampleRate(sampleRate);
-    
-   // for (int i=0; i<voiceCount; i++)
-   // {
-   //     Filter* v = dynamic_cast<Filter*>(sampler.getVoice(i));
-   //     v->setSampleRate(sampleRate);
-   // }
+ 
 
     for (int i=0; i<voiceCount; i++)
     {
@@ -105,70 +116,72 @@ void SamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     delay.setSize (2.0 * sampleRate); // delay time relative to the sampleRate
     delay.setDelayTime (sampleRate * 0.5); // changeable delay time
     
-    
-    /// filter
-    filter.setSampleRate (sampleRate);
-    
+
 }
 //===============================================================================
 void SamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
+    //dereferencing the gain parameter for both synth and sampler
+    float bufferGain = *gainParam;
     
+     // ========================== sampler render ================================
     sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    
-    int numSamples = buffer.getNumSamples();
+    int numSamples01 = buffer.getNumSamples();
     
     //pointers to audio arrays
     float* left = buffer.getWritePointer(0);
     float* right = buffer.getWritePointer(1);
     
-    //check bypass is off
-   if (! *bypassParam)
-     {
+    //  dereferencing the frequency parameter
+    //  float freq = *lowpassParam + (*highpassParam - *lowpassParam); //scaling
     
-    //DSP LOOP
-    for (int i=0; i<numSamples; i++)
-
-     {
-        //float sample = 0.0f;
-        
+    // sampler DSP LOOP
+    for (int i=0; i<numSamples01; i++)
+    {
         //============== filter ===================
-        float freq = *lowpassParam + (*highpassParam - *lowpassParam); //scaling
-        filter.setFrequency(freq);
-        float sample02 = filter.process(freq);
-        
+  //      filter.setFrequency(freq);
+  //      float sample02 = filter.process(freq);
+        //=============== mix=====================
+            left[i] = left[i] * (bufferGain);
+            right[i] = right[i] *  (bufferGain);
+    }
+  
+    /*
+    // ========================== synth render ================================
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    int numSamples02 = buffer.getNumSamples();
+    
+    //pointers to audio arrays
+    float* leftchannel = buffer.getWritePointer(0);
+    float* rightchannel = buffer.getWritePointer(1);
+    
+    //dereferencing the delay parameter
+    float lfo1Rate = *lfoRate01Param;
+    float lfo2Rate = *lfoRate02Param;
+    
+    // synth DSP LOOP
+    for (int i=0; i<numSamples02; i++)
+     {
+         float sample = 0.0;
         //============== delay ===================
-        
-        ///set mod rate with plug in  parameter
-        delayTimeLFO01.setFrequency(*lfoRate01Param);
-        delayTimeLFO02.setFrequency(*lfoRate02Param);
+        //set mod rate with plug in parameter
+        delayTimeLFO01.setFrequency(lfo1Rate);
+        delayTimeLFO02.setFrequency(lfo2Rate);
         
         // modulate delay time
         float delayMod = delayTimeLFO01.process() + delayTimeLFO02.process();
         int delayTime = delayMod * 4000 + 5000;
         delay.setDelayTime(delayTime);
-        
-        float delayedSample =delay.process(sample02);
-        //=============== final mix=====================
-        left[i] = left[i] * (*gainParam) +  delayedSample;
-        right[i] = right[i] *  (*gainParam) +  delayedSample;
-        
-        
-        //left[i] = left[i] * (*gainParam);
-        //right[i] = right[i] * (*gainParam) ;
-        
+        float delayedSample =delay.process(sample);
+         
+        //=============== mix =====================
+        leftchannel [i] = leftchannel[i] * bufferGain + delayedSample;
+        rightchannel[i] = rightchannel[i] * bufferGain + delayedSample;
      }
-     }
+  */ 
 }
 //================================================================================================
-
-
-
-
-
-
-
 
 SamplerAudioProcessor::~SamplerAudioProcessor()
 {

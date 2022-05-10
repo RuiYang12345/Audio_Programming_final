@@ -61,8 +61,8 @@ public:
 
 private:
     //instances of classes
-
     RYSampler sampler;
+    //juce::Synthesiser sampler;
     
     /// Delay
     Delay delay;
@@ -99,9 +99,7 @@ private:
     /// Delay lfo params
     std::atomic<float>* lfoRate01Param; //plugin parameter for rate
     std::atomic<float>* lfoRate02Param;
-  
-    ///bypassParam
-    std::atomic<float>* bypassParam;
+
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SamplerAudioProcessor)
