@@ -9,8 +9,9 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+
 //==============================================================================
-SamplerAudioProcessor::SamplerAudioProcessor()
+PluginAudioProcessor::PluginAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
@@ -19,196 +20,22 @@ SamplerAudioProcessor::SamplerAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ),
+                       )
 #endif
-
-// param
-    parameters (*this, nullptr , "Parameter Tree", {
-    
-    std::make_unique<juce::AudioParameterFloat>  ("gain", "Gain", 0.0, 10.0, 5.0),
-        
-    std::make_unique<juce::AudioParameterFloat>  ("detune", "Detune", 0.0, 20.0, 2.0),
-    
-    std::make_unique<juce::AudioParameterFloat> ("lowpass", "Lowpass", 50.0, 350.0, 55.0),
-    std::make_unique<juce::AudioParameterFloat>  ("highpass", "Highpass", 350.0, 5500.0, 2480.0),
-    
-    std::make_unique<juce::AudioParameterFloat> ("ATTACK", "Attack", 0.0, 5.0, 0.0),
-    std::make_unique<juce::AudioParameterFloat> ("DECAY", "Decay", 0.0, 3.0, 2.0),
-    std::make_unique<juce::AudioParameterFloat> ("SUSTAIN", "Sustain", 0.0, 1.0, 1.0),
-    std::make_unique<juce::AudioParameterFloat> ("RELEASE", "Release", 0.0, 5.0, 2.0),
-
-    std::make_unique<juce::AudioParameterFloat>("lfoRate01", "SinLFO Rate", 0.0, 1.0, 0.0025),
-    std::make_unique<juce::AudioParameterFloat>("lfoRate02", "TriLFO Rate", 0.0, 2.0, 0.0025),
-        
-
-} )
-
 {
-    //for whole
-    gainParam = parameters.getRawParameterValue("gain");
-    
-    //for synth
-    detuneParam = parameters.getRawParameterValue("detune");
-    
-    //for synth
-    lowpassParam = parameters.getRawParameterValue("lowpass");
-    highpassParam = parameters.getRawParameterValue("highpass");
-    
-    //for synth
-    attackParam = parameters.getRawParameterValue("attack");
-    decayParam = parameters.getRawParameterValue("decay");
-    sustainParam = parameters.getRawParameterValue("sustain");
-    releaseParam = parameters.getRawParameterValue("release");
-    
-    //for synth
-    lfoRate01Param = parameters.getRawParameterValue("lfoRate01");
-    lfoRate02Param = parameters.getRawParameterValue("lfoRate02");
-    
-    //========================== constructor =================================
-    // initialize sampler
-    for (int i = 0; i < voiceCount; i++) //voice count
-    {
-       sampler.addVoice(new juce::SamplerVoice());
-    }
-
-    sampler.setSample(BinaryData::RY_Metal_Knock_C4_wav, BinaryData::RY_Metal_Knock_C4_wavSize);
-    
-
-    // initalize synth
-    //voice count
-        for (int i=0; i<voiceCount; i++)
-        {
-            synth.addVoice( new DreamyVoiceSynthVoice() );
-        }
-
-        synth.addSound( new DreamyVoiceSynthSound);
-    
-    //detune setting
-    for (int i=0; i<voiceCount; i++)
-    {
-        DreamyVoiceSynthVoice* v = dynamic_cast <DreamyVoiceSynthVoice*> (synth.getVoice(i));
-        v-> setParameterPointers (detuneParam);
-    }
-        
-
-    // set parameters for sampler
-    for (int i = 0; i < voiceCount; i++)
-    {
-        DreamyVoiceSynthVoice* v = dynamic_cast< DreamyVoiceSynthVoice*>(synth.getVoice(i));
-        v->setParameterPointers(attackParam, decayParam, sustainParam, releaseParam);
-    }
-    
 }
 
-//==============================================================================
-
-void SamplerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    sampler.setCurrentPlaybackSampleRate(sampleRate);
-    synth.setCurrentPlaybackSampleRate(sampleRate) ;
-
-    for (int i=0; i<voiceCount; i++)
-    {
-        DreamyVoiceSynthVoice* v = dynamic_cast <DreamyVoiceSynthVoice*> (synth.getVoice(i));
-        v-> init (sampleRate);
-    }
-
-    /// delay
-    delay.setSize (2.0 * sampleRate); // delay time relative to the sampleRate
-    delay.setFeedback(0.5);
-    delay.setDelayTime (sampleRate * 0.25); // changeable delay time
-    
-    sr = sampleRate;
-    
-    /// delay LFO. modulation of delay time
-    //Sin mod
-    delayTimeLFO01.setSampleRate(sampleRate);
-    delayTimeLFO01.setFrequency(0.15);
-    
-    //Tri mod
-    delayTimeLFO02.setSampleRate(sampleRate);
-    delayTimeLFO02.setFrequency(0.1);
-    
-
-}
-//===============================================================================
-void SamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::ScopedNoDenormals noDenormals;
-    
-     // ========================== sampler render ================================
-    sampler.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    
-    int numSamples = buffer.getNumSamples();
-    
-    //dereferencing the gain parameter
-    float bufferGain = *gainParam;
-    
-    //pointers to audio arrays
-    float* left = buffer.getWritePointer(0);
-    float* right = buffer.getWritePointer(1);
-    
-
-    // sampler DSP LOOP
-    for (int i=0; i<numSamples; i++)
-    {
-            left[i] = left[i] * (bufferGain);
-            right[i] = right[i] *  (bufferGain);
-    }
-     
-     
- 
-    // ========================== synth render ===============================
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    int numSamples02 = buffer.getNumSamples();
-    
-    //pointers to audio arrays
-    auto* leftchannel  = buffer.getWritePointer(0);
-    auto* rightchannel = buffer.getWritePointer(1);
-    
-    
-    // dereferencing the delay parameter
-    float lfo1Rate = *lfoRate01Param;
-    float lfo2Rate = *lfoRate02Param;
-    
-    
-    // synth DSP LOOP
-    for (int y=0; y<numSamples02; y++)
-    {
-        //============== delay ===================
-        //set mod rate with plug in parameter
-        delayTimeLFO01.setFrequency(lfo1Rate);
-        delayTimeLFO02.setFrequency(lfo2Rate);
-        
-        // modulate delay time
-        float delayMod = delayTimeLFO01.process() + delayTimeLFO02.process();
-        int delayTime = delayMod * 4000 + 5000;
-        delay.setDelayTime(delayTime);
-        float delayedSample_l = delay.process (leftchannel[y]);
-        float delayedSample_r = delay.process (leftchannel[y]);
-        
-         
-        //=============== mix =====================
-        leftchannel [y] = leftchannel[y] + delayedSample_l;
-        rightchannel[y] = rightchannel[y] + delayedSample_r;
-     }
-  
-
-     
-}
-//================================================================================================
-
-SamplerAudioProcessor::~SamplerAudioProcessor()
+PluginAudioProcessor::~PluginAudioProcessor()
 {
 }
 
 //==============================================================================
-const juce::String SamplerAudioProcessor::getName() const
+const juce::String PluginAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool SamplerAudioProcessor::acceptsMidi() const
+bool PluginAudioProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -217,7 +44,7 @@ bool SamplerAudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool SamplerAudioProcessor::producesMidi() const
+bool PluginAudioProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -226,7 +53,7 @@ bool SamplerAudioProcessor::producesMidi() const
    #endif
 }
 
-bool SamplerAudioProcessor::isMidiEffect() const
+bool PluginAudioProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -235,45 +62,126 @@ bool SamplerAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double SamplerAudioProcessor::getTailLengthSeconds() const
+double PluginAudioProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int SamplerAudioProcessor::getNumPrograms()
+int PluginAudioProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int SamplerAudioProcessor::getCurrentProgram()
+int PluginAudioProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void SamplerAudioProcessor::setCurrentProgram (int index)
+void PluginAudioProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String SamplerAudioProcessor::getProgramName (int index)
+const juce::String PluginAudioProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void SamplerAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void PluginAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
-} 
+}
 
 //==============================================================================
+void PluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+   
+    // === vector of triangle wave ===
+    vector.setSampleRate(sampleRate);
+    
+    // === freq modulation of sine and square wave ===
+    modulator01.setSampleRate(sampleRate);
+    modulator01.setBaseFrequency(440.0);
+    modulator01.setModFrequency(8.0); // growl effect of the upper limit of subsonic oscillations
+    
+    modulator02.setSampleRate(sampleRate);
+    modulator02.setBaseFrequency(880.0);
+    modulator02.setModFrequency(12.0); // double mod1 frequency and move faster than mod1 with higher Hz
+    
+    
+    // ====== freq modulation of filter ==
+    filterSynth.setSampleRate(sampleRate);
+    filterSynth.setFrequency(0.01); // a slow filter sweep for smooth filter sounds
+    
+    //============= panning =========
+    panOsc.setSampleRate(sampleRate);
+    panOsc.setFrequency(0.025); // very slowly changing
+    
+    //============== DELAY ==============
+    
+    delay.setSize (2.0 * sampleRate); // delay time relative to the sampleRate
+    
+    delay.setDelayTime (sampleRate * 0.5); // changeable delay time
+    
+    
 
-void SamplerAudioProcessor::releaseResources()
+    
+    
+}
+
+void PluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    juce::ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
+    int numSamples = buffer.getNumSamples();
+    
+    //pointers to audio arrays
+    float* leftchannel = buffer.getWritePointer(0);
+    float* rightchannel = buffer.getWritePointer(1);
+    
+    //DSP LOOP!
+    for (int i=0; i<numSamples; i++)
+    {
+        // ==== mix triangle wave, frequency modulation of sine tone and square wave ====
+        float sample = (vector.process() + modulator01.process() + modulator02.process());
+        
+        // ==== frequency modulation of filter ======
+        float sampleL = filterSynth.processL(sample);
+        float sampleR = filterSynth.processR(sample);
+    
+        // ============= panning =================
+        // get panning oscillator val ±1
+        float panVal = panOsc.process();    // ±1
+            
+        // derive raw left and right pan values
+        float panL = panVal*0.5 + 0.5;      // 0-1
+        float panR = 1.0 - panL;            // 1-0
+                
+        //============== delay ===================
+        float delayedSample =delay.process(sample);
+    
+        // ================ final mix =====================
+        leftchannel [i] = (delayedSample * panL) + sampleL;
+        rightchannel[i] = (delayedSample * panR) + sampleR;
+    }
+    
+       
+}
+
+
+
+void PluginAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool SamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool PluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -297,30 +205,31 @@ bool SamplerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) 
   #endif
 }
 #endif
+//actual audio processing
+
 
 
 
 //==============================================================================
-bool SamplerAudioProcessor::hasEditor() const
+bool PluginAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* SamplerAudioProcessor::createEditor()
+juce::AudioProcessorEditor* PluginAudioProcessor::createEditor()
 {
-    //return new SamplerAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new PluginAudioProcessorEditor (*this);
 }
 
 //==============================================================================
-void SamplerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void PluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
 }
 
-void SamplerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void PluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
@@ -330,5 +239,5 @@ void SamplerAudioProcessor::setStateInformation (const void* data, int sizeInByt
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new SamplerAudioProcessor();
+    return new PluginAudioProcessor();
 }

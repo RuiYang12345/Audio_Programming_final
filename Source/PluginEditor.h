@@ -14,11 +14,11 @@
 //==============================================================================
 /**
 */
-class SamplerAudioProcessorEditor  : public juce::AudioProcessorEditor
+class PluginAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    SamplerAudioProcessorEditor (SamplerAudioProcessor&);
-    ~SamplerAudioProcessorEditor() override;
+    PluginAudioProcessorEditor (PluginAudioProcessor&);
+    ~PluginAudioProcessorEditor() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
@@ -27,7 +27,7 @@ public:
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
-    SamplerAudioProcessor& audioProcessor;
+    PluginAudioProcessor& audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SamplerAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginAudioProcessorEditor)
 };

@@ -13,7 +13,7 @@ public:
     {
         
         float output = readVal();
-        writeVal (inputSample + (output * feedback));
+        writeVal (inputSample);
         
         return output;
     }
@@ -66,9 +66,6 @@ public:
         if  (delayTimeInSamples > size)
             delayTimeInSamples = size;
         
-        if  (delayTimeInSamples > 1)
-            delayTimeInSamples = 1;
-        
         readPos = writePos - delayTimeInSamples;
         
         // if readPos < 0, then add size to readPos
@@ -76,17 +73,15 @@ public:
             readPos += size;
     }
     
-    ///setFeedback (0-1 )
-    void setFeedback (float _fb)
-   {
-      feedback = _fb;
+    //void setFeedback (float _fb)
+   // {
+      //  feedback = _fb;
         
-      if (feedback > 1.0)
-         feedback = 1.0;
+      //  if (feedback > 1.0)
+      //      feedback = 1.0;
         
-      if (feedback < 0.0)
-           feedback = 0.0;
-    }
+      //  if (feedback < 0.0)
+      //     feedback = 0.0;
             
 
     
@@ -95,8 +90,7 @@ private:
     int size; // size of buffer in samples
     int delayTimeInSamples;
     int readPos = 0; // read position
-    int writePos = 0; // write position
-    float feedback = 0.7; //0-1
+    int writePos = 0; // write position 
 
 };
 

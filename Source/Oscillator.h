@@ -12,12 +12,11 @@ Oscillator class with three wave shapes (processSine, processSquare, processTria
 class Phasor
 {
 public:
-    /**
-    * Our parent oscillator class does the key things required for most oscillators:
-    * -- handles phase
-    *-- handles setters and getters for frequency and samplerate
-     */
-     
+    
+    // Our parent oscillator class does the key things required for most oscillators:
+    // -- handles phase
+    // -- handles setters and getters for frequency and samplerate
+   
     /// Note: 0-1
     float process()
     {
